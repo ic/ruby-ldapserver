@@ -1,7 +1,7 @@
 COPYING
 ChangeLog
 Manifest.txt
-README
+README.txt
 Rakefile
 examples/README
 examples/mkcert.rb

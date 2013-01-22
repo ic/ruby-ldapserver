@@ -1,3 +1,4 @@
+=begin
 require File.dirname(__FILE__) + '/test_helper'
 require 'ldap/server/util'
 
@@ -48,4 +49,5 @@ class TestLdapUtil < Test::Unit::TestCase
     )
   end
 end
+=end
 
