@@ -11,6 +11,7 @@ RDOC_OPTS = ['--quiet', '--title', 'ruby-ldapserver',
 # Generate all the Rake tasks
 Hoe.spec 'ruby-ldapserver' do |p|
   p.rubyforge_name = 'ruby-ldapserver'
+  p.version = LDAP::Server::VERSION
   p.summary = 'A pure-Ruby framework for building LDAP servers'
   p.description = 'ruby-ldapserver is a lightweight, pure-Ruby skeleton for implementing LDAP server applications.'
   p.author = 'Brian Candler'
