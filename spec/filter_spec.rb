@@ -15,13 +15,19 @@ describe LDAP::Server::Filter do
     }
   end
 
-  context 'Simple filters' do
+  context 'Present filters' do
 
-    it 'should '
+    it 'should return true for existing entries' do
+      subject.run([:present, 'foo'], input).should be_true
+    end
+
+    it 'should return false for missing entries' do
+      subject.run([:present, 'foofoo'], input).should be_false
+    end
 
   end
 
-  context 'Bad filters' do
+  context 'Wrong filters' do
 
     it 'raises an operation error for unknown filter types' do
       expect {
