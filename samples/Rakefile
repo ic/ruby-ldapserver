@@ -1,0 +1,53 @@
+$:.unshift(File.expand_path('lib', File.dirname(__FILE__)))
+require 'gem'
+
+namespace :sample do
+  namespace :server do
+
+    $:.unshift(File.expand_path('servers', File.dirname(__FILE__)))
+
+    desc 'Run a sample server with a MySQL backend.'
+    task :mysql do |t|
+      runner(t.name.split(':').last)
+    end
+
+    def config
+      @config ||= YAML.load_file(File.expand_path('config.yml', File.dirname(__FILE__)))[@name.to_sym]
+    end
+
+    def runner(name)
+      @name = name
+      require 'dm-core'
+      require 'dm-migrations'
+      require_on_install 'dm-mysql-adapter'
+      DataMapper::Logger.new($stdout, :debug)
+      require 'debugger'; debugger
+      DataMapper.setup(:default, "#{config[:adapter]}://#{config[:user]}:#{config[:password]}@#{config[:host]}:#{config[:port]}/#{config[:database]}")
+      require 'models'
+      begin
+        DataMapper.auto_upgrade!
+      rescue DataObjects::ConnectionError
+        setup_database_user
+        @attempts ||= 0
+        @attempts += 1
+        @attempts <= 1 ? retry : exit(2)
+      rescue DataObjects::SQLError
+        puts e.class.to_s
+        exit 1
+      end
+      DataMapper.finalize
+      require 'mysql'
+    end
+
+    def setup_database
+    end
+
+    def setup_database_user
+      # TODO Detect if user already exists.
+      # TODO Parameterize.
+      %x{ mysql -uroot -p -e \"create user 'ldap_server_test'@'localhost' identified by 'ldap_server_test'\" }
+    end
+
+  end
+end
+

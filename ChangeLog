@@ -1,3 +1,9 @@
+0.3.2 - 2013-x-y
+* Dependency management with Bundler.
+* Rewrite of the test suite with Rspec.
+* Rake tasks to start sample servers.
+* Added a sample backed by SQLite3.
+
 0.3.1 - 2008-01-16
 * First release as a gem [Brandon Keepers]
 
