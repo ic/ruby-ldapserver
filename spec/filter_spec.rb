@@ -133,6 +133,247 @@ describe LDAP::Server::Filter do
 
   end
 
+  context 'Lesser-or-equal filters' do
+    it 'detects "equality"' do
+      subject.run([:le, 'foo', nil, 'abc'], input).should be_true
+    end
+
+    it 'detects greater values' do
+      subject.run([:le, 'foo', nil, 'a'], input).should be_false
+    end
+
+    it 'detects lesser values' do
+      subject.run([:le, 'bar', nil, 'wibblespong2'], input).should be_true
+    end
+
+    it 'returns false for unknown attributes' do
+      subject.run([:le, 'not_attr', nil, 'abc'], input).should be_false
+    end
+  end
+
+  # RFC 4517
+  # http://www.faqs.org/rfcs/rfc4517.html
+  # 4.2.6
+  context 'Substring filters with initial substrings only' do
+    it 'finds initial substrings' do
+      [
+        subject.run([:substrings, 'foo', nil, 'a', nil], input),
+        subject.run([:substrings, 'foo', nil, 'ab', nil], input),
+        subject.run([:substrings, 'foo', nil, 'abc', nil], input),
+        subject.run([:substrings, 'foo', nil, 'def', nil], input),
+      ].reduce(:&).should be_true
+    end
+    it 'returns false when no substring matches' do
+      [
+        subject.run([:substrings, 'foo', nil, 'b', nil], input),
+        subject.run([:substrings, 'foo', nil, 'bc', nil], input),
+        subject.run([:substrings, 'foo', nil, 'ac', nil], input),
+        subject.run([:substrings, 'foo', nil, 'bd', nil], input),
+      ].reduce(:|).should be_false
+    end
+    it 'finds the empty initial string' do
+      subject.run([:substrings, 'foo', nil, '', nil], input).should be_true
+    end
+    it 'returns false for unknown attributes' do
+      [
+        subject.run([:substrings, 'not_attr', nil, '', nil], input),
+        subject.run([:substrings, 'not_attr', nil, 'abc', nil], input),
+      ].reduce(:|).should be_false
+    end
+  end
+
+  context 'Substring filters with initial and prepared substrings' do
+    it 'finds substrings' do
+      [
+        subject.run([:substrings, 'foo', nil, '', 'a', nil], input),
+        subject.run([:substrings, 'foo', nil, 'a', 'b', nil], input),
+        subject.run([:substrings, 'foo', nil, 'ab', 'c', nil], input),
+        subject.run([:substrings, 'foo', nil, 'abc', '', nil], input),
+        subject.run([:substrings, 'foo', nil, 'd', '',  nil], input),
+      ].reduce(:&).should be_true
+    end
+    it 'returns false when no substring matches' do
+      [
+        subject.run([:substrings, 'foo', nil, 'b', '', nil], input),
+        subject.run([:substrings, 'foo', nil, 'b', 'c', nil], input),
+        subject.run([:substrings, 'foo', nil, 'ac', nil], input),
+      ].reduce(:|).should be_false
+    end
+    it 'finds the empty string' do
+      subject.run([:substrings, 'foo', nil, '', '', nil], input).should be_true
+    end
+    it 'returns false for unknown attributes' do
+      [
+        subject.run([:substrings, 'not_attr', nil, '', '', nil], input),
+        subject.run([:substrings, 'not_attr', nil, '', 'abc', nil], input),
+        subject.run([:substrings, 'not_attr', nil, 'abc', '', nil], input),
+        subject.run([:substrings, 'not_attr', nil, 'a', 'b', nil], input),
+      ].reduce(:|).should be_false
+    end
+  end
+
+  context 'Substring filters with final substring only' do
+    it 'finds substrings' do
+      [
+        subject.run([:substrings, 'foo', nil, nil, 'c'], input),
+        subject.run([:substrings, 'foo', nil, nil, 'bc'], input),
+        subject.run([:substrings, 'foo', nil, nil, 'abc'], input),
+      ].reduce(:&).should be_true
+    end
+    it 'returns false when no substring matches' do
+      subject.run([:substrings, 'foo', nil, nil, 'd'], input).should be_false
+    end
+    it 'finds the empty string' do
+      subject.run([:substrings, 'foo', nil, nil, ''], input).should be_true
+    end
+    it 'returns false for unknown attributes' do
+      [
+        subject.run([:substrings, 'not_attr', nil, nil, ''], input),
+        subject.run([:substrings, 'not_attr', nil, nil, 'c'], input),
+        subject.run([:substrings, 'not_attr', nil, nil, 'bc'], input),
+        subject.run([:substrings, 'not_attr', nil, nil, 'abc'], input),
+        subject.run([:substrings, 'not_attr', nil, nil, '0abc'], input),
+      ].reduce(:|).should be_false
+    end
+  end
+
+  context 'Substring filters with final and prepared substrings' do
+    it 'finds substrings' do
+      [
+        subject.run([:substrings, 'foo', nil, nil, '', 'c'], input),
+        subject.run([:substrings, 'foo', nil, nil, 'b', 'c'], input),
+        subject.run([:substrings, 'foo', nil, nil, 'ab', 'c'], input),
+      ].reduce(:&).should be_true
+    end
+    it 'returns false when no substring matches' do
+      [
+        subject.run([:substrings, 'foo', nil, nil, 'b', 'd'], input),
+        subject.run([:substrings, 'foo', nil, nil, 'ab', 'd'], input),
+        subject.run([:substrings, 'foo', nil, nil, 'abc', 'd'], input),
+      ].reduce(:|).should be_false
+    end
+    it 'finds the empty string' do
+      subject.run([:substrings, 'foo', nil, nil, '', ''], input).should be_true
+    end
+    it 'returns false for unknown attributes' do
+      [
+        subject.run([:substrings, 'not_attr', nil, nil, '', ''], input),
+        subject.run([:substrings, 'not_attr', nil, nil, '', 'abc'], input),
+        subject.run([:substrings, 'not_attr', nil, nil, 'abc', ''], input),
+        subject.run([:substrings, 'not_attr', nil, nil, 'b', 'c'], input),
+      ].reduce(:|).should be_false
+    end
+  end
+
+  context 'Substring filters with initial, final, and prepared substrings' do
+    it 'finds substrings' do
+      [
+        subject.run([:substrings, 'foo', nil, 'a', '', 'c'], input),
+        subject.run([:substrings, 'foo', nil, 'a', 'b', 'c'], input),
+        subject.run([:substrings, 'foo', nil, '', 'ab', 'c'], input),
+        subject.run([:substrings, 'foo', nil, 'a', 'b', ''], input),
+      ].reduce(:&).should be_true
+    end
+    it 'returns false when no substring matches' do
+      [
+        subject.run([:substrings, 'foo', nil, 'x', 'b', 'c'], input),
+        subject.run([:substrings, 'foo', nil, 'a', 'x', 'c'], input),
+        subject.run([:substrings, 'foo', nil, 'a', 'b', 'x'], input),
+      ].reduce(:|).should be_false
+    end
+    it 'finds the empty string' do
+      subject.run([:substrings, 'foo', nil, '', '', ''], input).should be_true
+    end
+    it 'returns false for unknown attributes' do
+      [
+        subject.run([:substrings, 'not_attr', nil, '', '', ''], input),
+        subject.run([:substrings, 'not_attr', nil, '', '', 'abc'], input),
+        subject.run([:substrings, 'not_attr', nil, '', 'abc', ''], input),
+        subject.run([:substrings, 'not_attr', nil, 'abc', 'abc', ''], input),
+        subject.run([:substrings, 'not_attr', nil, 'a', 'b', 'c'], input),
+      ].reduce(:|).should be_false
+    end
+  end
+
+  # RFC 4517
+  # http://www.faqs.org/rfcs/rfc4517.html
+  # 4.2.8
+  context 'Substring filters for case insensitive IA5 strings' do
+    let :rule do
+      LDAP::Server::MatchingRule.find('caseIgnoreIA5SubstringsMatch')
+    end
+    it 'finds initial substrings' do
+      [
+        subject.run([:substrings, 'foo', rule, 'a', nil], input),
+        subject.run([:substrings, 'foo', rule, 'A', nil], input),
+        subject.run([:substrings, 'foo', rule, 'ab', nil], input),
+        subject.run([:substrings, 'foo', rule, 'AB', nil], input),
+        subject.run([:substrings, 'foo', rule, 'aB', nil], input),
+        subject.run([:substrings, 'foo', rule, 'Ab', nil], input),
+        subject.run([:substrings, 'foo', rule, 'a', 'b', nil], input),
+        subject.run([:substrings, 'foo', rule, 'A', 'b', nil], input),
+        subject.run([:substrings, 'foo', rule, 'a', 'B', nil], input),
+        subject.run([:substrings, 'foo', rule, 'A', 'B', nil], input),
+        subject.run([:substrings, 'foo', rule, 'a', 'b', 'c'], input),
+        subject.run([:substrings, 'foo', rule, 'A', 'b', 'c'], input),
+        subject.run([:substrings, 'foo', rule, 'A', 'B', 'c'], input),
+        subject.run([:substrings, 'foo', rule, 'A', 'B', 'C'], input),
+        subject.run([:substrings, 'foo', rule, 'a', 'B', 'C'], input),
+        subject.run([:substrings, 'foo', rule, 'a', 'b', 'C'], input),
+        subject.run([:substrings, 'foo', rule, 'a', 'B', 'c'], input),
+        subject.run([:substrings, 'foo', rule, 'def', nil], input),
+        subject.run([:substrings, 'foo', rule, 'dEf', nil], input),
+      ].reduce(:&).should be_true
+    end
+    it 'returns false when no substring matches' do
+      [
+        subject.run([:substrings, 'foo', rule, 'b', nil], input),
+        subject.run([:substrings, 'foo', rule, 'bc', nil], input),
+        subject.run([:substrings, 'foo', rule, 'ac', nil], input),
+        subject.run([:substrings, 'foo', rule, 'bd', nil], input),
+      ].reduce(:|).should be_false
+    end
+    it 'finds the empty initial string' do
+      subject.run([:substrings, 'foo', rule, '', '', ''], input).should be_true
+    end
+    it 'returns false for unknown attributes' do
+      [
+        subject.run([:substrings, 'not_attr', rule, '', nil], input),
+        subject.run([:substrings, 'not_attr', rule, 'abc', nil], input),
+      ].reduce(:|).should be_false
+    end
+  end
+
+  context 'Filter conjunction' do
+    it 'true & true' do
+      subject.run([:and, [:true], [:true]], {}).should be_true
+    end
+    it 'true & false' do
+      subject.run([:and, [:true], [:false]], {}).should be_false
+    end
+    it 'false & false' do
+      subject.run([:and, [:false], [:false]], {}).should be_false
+    end
+    it 'false & true' do
+      subject.run([:and, [:false], [:true]], {}).should be_false
+    end
+  end
+
+  context 'Filter disjunction' do
+    it 'true & true' do
+      subject.run([:or, [:true], [:true]], {}).should be_true
+    end
+    it 'true & false' do
+      subject.run([:or, [:true], [:false]], {}).should be_true
+    end
+    it 'false & false' do
+      subject.run([:or, [:false], [:false]], {}).should be_false
+    end
+    it 'false & true' do
+      subject.run([:or, [:false], [:true]], {}).should be_true
+    end
+  end
+
   context 'Negation filters' do
     it 'negates equality filters' do
       subject.run([:not, [:eq, 'foo', nil, 'abc']], input).should be_false
@@ -162,11 +403,17 @@ describe LDAP::Server::Filter do
       subject.run([:not, [:le, 'foo', nil, 'abc']], input).should be_false
     end
 
-    it 'negates substrings filters'
+    it 'negates substrings filters' do
+      subject.run([:not, [:substrings, 'foo', nil, 'a', 'b', 'c']], input).should be_false
+    end
 
-    it 'negates and filter operators'
+    it 'negates and filter operators' do
+      subject.run([:not, [:and, [:true], [:true]]], input).should be_false
+    end
 
-    it 'negates or filter operators'
+    it 'negates or filter operators' do
+      subject.run([:not, [:or, [:true], [:true]]], input).should be_false
+    end
   end
 
 end
