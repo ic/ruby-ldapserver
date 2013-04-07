@@ -77,6 +77,8 @@ describe LDAP::Server::Filter do
 
   context 'Equality filters with the "caseIgnoreMatch" RFC matching rule' do
 
+    # TODO Test other matching rules---untested in the original test suite.
+
     let :rule do
       LDAP::Server::MatchingRule.find('caseIgnoreMatch')
     end
@@ -109,6 +111,62 @@ describe LDAP::Server::Filter do
       subject.run([:eq, 'not_attr', rule, 'abc'], input).should be_false
     end
 
+  end
+
+  context 'Greater-or-equal filters' do
+
+    it 'detects "equality"' do
+      subject.run([:ge, 'foo', nil, 'abc'], input).should be_true
+    end
+
+    it 'detects greater values' do
+      subject.run([:ge, 'foo', nil, 'a'], input).should be_true
+    end
+
+    it 'detects lesser values' do
+      subject.run([:ge, 'bar', nil, 'wibblespong2'], input).should be_false
+    end
+
+    it 'returns false for unknown attributes' do
+      subject.run([:ge, 'not_attr', nil, 'abc'], input).should be_false
+    end
+
+  end
+
+  context 'Negation filters' do
+    it 'negates equality filters' do
+      subject.run([:not, [:eq, 'foo', nil, 'abc']], input).should be_false
+    end
+
+    it 'negates presence filters' do
+      subject.run([:not, [:present, 'foo']], input).should be_false
+    end
+
+    it 'negates true filters' do
+      subject.run([:not, [:true]], input).should be_false
+    end
+
+    it 'negates false filters' do
+      subject.run([:not, [:false]], input).should be_true
+    end
+
+    it 'negates undef filters' do
+      subject.run([:not, [:undef]], input).should be_false
+    end
+
+    it 'negates greater-or-equal filters' do
+      subject.run([:not, [:ge, 'foo', nil, 'abc']], input).should be_false
+    end
+
+    it 'negates lower-or-equal filters' do
+      subject.run([:not, [:le, 'foo', nil, 'abc']], input).should be_false
+    end
+
+    it 'negates substrings filters'
+
+    it 'negates and filter operators'
+
+    it 'negates or filter operators'
   end
 
 end
