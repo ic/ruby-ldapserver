@@ -53,5 +53,63 @@ describe LDAP::Server::Filter do
 
   end
 
+  context 'Equality filters without matching rule' do
+
+    it 'can match an existing attribute-value pair' do
+      subject.run([:eq, 'foo', nil, 'abc'], input).should be_true
+    end
+
+    it 'can match several pairs in series' do
+      first  = subject.run([:eq, 'foo', nil, 'abc'], input)
+      second = subject.run([:eq, 'foo', nil, 'def'], input)
+      (first && second).should be_true
+    end
+
+    it 'returns false when no value match is found' do
+      subject.run([:eq, 'foo', nil, 'not_matched'], input).should be_false
+    end
+
+    it 'returns false when the attribute is not found' do
+      subject.run([:eq, 'not_attr', nil, 'abc'], input).should be_false
+    end
+
+  end
+
+  context 'Equality filters with the "caseIgnoreMatch" RFC matching rule' do
+
+    let :rule do
+      LDAP::Server::MatchingRule.find('caseIgnoreMatch')
+    end
+
+    it 'can match exactly an existing attribute-value pair' do
+      subject.run([:eq, 'foo', rule, 'abc'], input).should be_true
+    end
+
+    it 'can match an attribute-value pair despite different case' do
+      subject.run([:eq, 'foo', rule, 'ABC'], input).should be_true
+    end
+
+    it 'can match exactly several pairs in series' do
+      first  = subject.run([:eq, 'foo', nil, 'abc'], input)
+      second = subject.run([:eq, 'foo', nil, 'def'], input)
+      (first && second).should be_true
+    end
+
+    it 'can match several pairs in series despite different cases' do
+      first  = subject.run([:eq, 'foo', rule, 'abC'], input)
+      second = subject.run([:eq, 'foo', rule, 'dEf'], input)
+      (first && second).should be_true
+    end
+
+    it 'returns false when no value match is found' do
+      subject.run([:eq, 'foo', rule, 'not_matched'], input).should be_false
+    end
+
+    it 'returns false when the attribute is not found' do
+      subject.run([:eq, 'not_attr', rule, 'abc'], input).should be_false
+    end
+
+  end
+
 end
 
