@@ -1,6 +1,3 @@
-#!/usr/local/bin/ruby -w
-
-$:.unshift('../lib')
 require 'ldap/server'
 require 'thread'
 require 'resolv-replace'	# ruby threading DNS client
@@ -27,8 +24,6 @@ require 'resolv-replace'	# ruby threading DNS client
 #    ldapsearch -H ldap://127.0.0.1:1389/ -b "dc=example,dc=com" \
 #       -D "id=1,dc=example,dc=com" -W "(uid=brian)"
 
-$debug = true
-SQL_CONNECT = ["1.2.3.4", "myuser", "mypass", "mydb"]
 TABLE = "logins"
 SQL_POOL_SIZE = 5
 PW_CACHE_SIZE = 100
@@ -39,6 +34,7 @@ class SQLOperation < LDAP::Server::Operation
   # Handle searches of the form "(uid=<foo>)" using SQL backend
   # (uid=foo) => [:eq, "uid", matchobj, "foo"]
   def search(basedn, scope, deref, filter)
+require 'debugger'; debugger
     raise LDAP::ResultError::UnwillingToPerform, "Bad base DN" unless basedn == BASEDN
     raise LDAP::ResultError::UnwillingToPerform, "Bad filter" unless filter[0..1] == [:eq, "uid"]
     uid = filter[3]
@@ -52,8 +48,8 @@ class SQLOperation < LDAP::Server::Operation
 
   # Validate passwords
   def simple_bind(version, dn, password)
+require 'debugger'; debugger
     return if dn.nil?   # accept anonymous
-
     raise LDAP::ResultError::UnwillingToPerform unless dn =~ /\Aid=(\d+),#{BASEDN}\z/
     login_id = $1
     login = Logins.get(login_id)
@@ -62,14 +58,21 @@ class SQLOperation < LDAP::Server::Operation
 end
 
 s = LDAP::Server.new(
-	:port			=> LDAP_PORT,
-	:nodelay		=> true,
-	:listen			=> 10,
+	port:    LDAP_PORT,
+	nodelay: true,
+	listen:  10,
 #	:ssl_key_file		=> "key.pem",
 #	:ssl_cert_file		=> "cert.pem",
 #	:ssl_on_connect		=> true,
-	:operation_class	=> SQLOperation
+	operation_class: SQLOperation
 )
+
+# Register for normal exits.
+Signal.trap('INT') do
+  exit 0
+end
+
+# Start the server and wait for an interrupt to finish.
 s.run_tcpserver
 s.join
 

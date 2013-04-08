@@ -1,4 +1,6 @@
+$:.unshift(File.expand_path(File.join('..', 'lib'), File.dirname(__FILE__)))
 $:.unshift(File.expand_path('lib', File.dirname(__FILE__)))
+require 'open3'
 require 'gem'
 
 namespace :sample do
@@ -21,31 +23,52 @@ namespace :sample do
       require 'dm-migrations'
       require_on_install 'dm-mysql-adapter'
       DataMapper::Logger.new($stdout, :debug)
-      require 'debugger'; debugger
       DataMapper.setup(:default, "#{config[:adapter]}://#{config[:user]}:#{config[:password]}@#{config[:host]}:#{config[:port]}/#{config[:database]}")
       require 'models'
       begin
         DataMapper.auto_upgrade!
-      rescue DataObjects::ConnectionError
-        setup_database_user
+      rescue Exception => e
+        setup_database
         @attempts ||= 0
         @attempts += 1
         @attempts <= 1 ? retry : exit(2)
-      rescue DataObjects::SQLError
-        puts e.class.to_s
-        exit 1
       end
       DataMapper.finalize
       require 'mysql'
     end
 
     def setup_database
-    end
+      print "Password for MySQL root user? "
+      pwd = STDIN.gets.chomp.strip
+      puts "No root password. You will have to press return at each step." if pwd.empty?
 
-    def setup_database_user
-      # TODO Detect if user already exists.
-      # TODO Parameterize.
-      %x{ mysql -uroot -p -e \"create user 'ldap_server_test'@'localhost' identified by 'ldap_server_test'\" }
+      puts "Testing existence of the '#{config[:database]}' database..."
+      db_setup = true
+      Open3.popen2("mysql -uroot -p#{pwd} -e \"show databases\\G\"") do |i, out, t|
+        t.value
+        db_setup = false if out.read =~ /#{config[:database]}/
+      end
+      if db_setup
+        puts "Creating #{config[:database]}..."
+        %x{ mysql -uroot -p#{pwd} -e \"create database #{config[:database]}\" }
+      else
+        puts "OK"
+      end
+      
+      puts "Testing existence of the '#{config[:user]}' user..."
+      user_setup = true
+      Open3.popen2("mysql -uroot -p#{pwd} -e \"select User from mysql.user where User='#{config[:user]}'\\G\"") do |i, out, t|
+        t.value
+        user_setup = false if out.read =~ /#{config[:user]}/
+      end
+      if user_setup
+        puts "Creating '#{config[:user]}'..."
+        %x{ mysql -uroot -p#{pwd} -e \"create user '#{config[:user]}'@'localhost' identified by '#{config[:password]}'\" }
+        puts "Granting '#{config[:user]}' with permissions on '#{config[:database]}'..."
+        %x{ mysql -uroot -p#{pwd} -e \"grant all on #{config[:database]}.* to '#{config[:user]}'@'localhost'\" }
+      else
+        puts "OK"
+      end
     end
 
   end

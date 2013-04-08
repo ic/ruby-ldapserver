@@ -11,10 +11,11 @@ module Kernel
     rescue LoadError => e
       require 'rubygems'
       require 'rubygems/dependency_installer'
+      STDERR.puts "Warning: #{gem_name} is not installed. Attempting an install..."
       Gem::DependencyInstaller.new({
         generate_rdoc: false,
         generate_ri:   false,
-      }).install(g)
+      }).install(gem_name)
       retry
     end
   end
